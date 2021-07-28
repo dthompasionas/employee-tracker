@@ -31,6 +31,7 @@ In order to use this app, run in the terminal
 push up code to be reviewed.
 
 # Screenshot:
+![](/assets/images/employee-screenshot.PNG)
 
 # Questions
 Contact me with any questions here:
