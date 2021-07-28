@@ -1,183 +1,128 @@
 const inquirer = require("inquirer");
-const columnify = require('columnify');
+const columnify = require("columnify");
 const mysql = require("mysql");
-
 
 let listOfAvailableRoles = [];
 
 const connection = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: 'root',
-    database: 'employees_db',
-    port: 3306
+  host: "localhost",
+  user: "root",
+  password: "root",
+  database: "employees_db",
+  port: 3306,
 });
 
 connection.connect((err) => {
   if (err) throw err;
-   cli_prompt();
+  cli_prompt();
 });
 
 const mainPrompt = [
-    
-    {
-
-        name: "action",
-        type: "list",
-        message: "What would you like to do?",
-        choices: [
-            
-            "View All Employees",
-            "View Departments",
-            "View All Employees By Manager",
-            "Add Employee",
-            "Remove Employee",
-            "Update Employee Manager",
-            "Add Role",
-            "Remove Role",
-            "exit"
-        ]
-        
-    }
-
+  {
+    name: "action",
+    type: "list",
+    message: "What would you like to do?",
+    choices: [
+      "View All Employees",
+      "View Departments",
+      "View All Employees By Manager",
+      "Add Employee",
+      "Remove Employee",
+      "Update Employee Manager",
+      "Add Role",
+      "exit",
+    ],
+  },
 ];
 
 // prompt user with inquirer and execute function corresponding to user selection
-function  cli_prompt() {
-   
-    // prompt user actions using inquirer 
-    inquirer.prompt(mainPrompt)
-    
+function cli_prompt() {
+  // prompt user actions using inquirer
+  inquirer
+    .prompt(mainPrompt)
+
     // await user response from inquirer
-    .then(function(answer) {
+    .then(function (answer) {
+      // execute function viewAll if user selection is "View All employees"
+      if (answer.action == "View All Employees") {
+        showAllEmployees();
 
-        // execute function viewAll if user selection is "View All employees"
-        if(answer.action == "View All Employees") {
-            
-            showAllEmployees();
-        
         // execute function viewDept if user selection is "View departments"
-        }else if(answer.action == "View Departments") {
-
-            viewDept();
-
-        
-        }else if(answer.action == "View All Employees By Manager") {
-
-            showAllEmployeesByManager();
-
-        
-        }else if(answer.action == "Add Employee") {
-
-            addEmployee();
-            
-        
-        }else if(answer.action == "Remove Employee") {
-
-            removeEmployee();
-       
-        
-        }else if(answer.action == "Update Employee Manager") {
-
-            updateEmployeeManager();
-
-
-        
-        }else if(answer.action == "Add Role") {
-
-            addRole();
-
-
-        }else if(answer.action == "Remove Role") {
-
-            removeRole();
-
+      } else if (answer.action == "View Departments") {
+        viewDept();
+      } else if (answer.action == "View All Employees By Manager") {
+        showAllEmployeesByManager();
+      } else if (answer.action == "Add Employee") {
+        addEmployee();
+      } else if (answer.action == "Remove Employee") {
+        removeEmployee();
+      } else if (answer.action == "Update Employee Manager") {
+        updateEmployeeManager();
+      } else if (answer.action == "Add Role") {
+        addRole();
         // execute function EXIT if user selection is "EXIT"
-        }else if(answer.action == "exit") {
-
-            exit();
-         
-        };
-
-        
-        
-
-    });    
-
-};
-
+      } else if (answer.action == "exit") {
+        exit();
+      }
+    });
+}
 
 function showAllEmployees() {
+  // SQL command to get employee first_name/ last_name/ manager id, role title/ salary and department name data from employees, roles, and department tables
+  let query =
+    "SELECT employees.first_name, employees.last_name, roles.title, roles.salary, department.dept_name AS department, employees.manager_id " +
+    "FROM employees " +
+    "JOIN roles ON roles.id = employees.role_id " +
+    "JOIN department ON roles.department_id = department.id " +
+    "ORDER BY employees.id;";
 
-    // SQL command to get employee first_name/ last_name/ manager id, role title/ salary and department name data from employees, roles, and department tables
-    let query =
+  // connect to mySQL useing query instruction to access employees table
+  connection.query(query, function (err, res) {
+    // throw error if there is issue accessing data
+    if (err) throw err;
 
-        "SELECT employees.first_name, employees.last_name, roles.title, roles.salary, department.dept_name AS department, employees.manager_id " +
-        "FROM employees " +
-        "JOIN roles ON roles.id = employees.role_id " +
-        "JOIN department ON roles.department_id = department.id " +
-        "ORDER BY employees.id;"
+    // add manager names to the manager_id col to be displayed in terminal
+    for (i = 0; i < res.length; i++) {
+      // if manager_Id contains a "0" then lable it as "None"
+      if (res[i].manager_id == 0) {
+        res[i].manager = "None";
+      } else {
+        // create new row called manager, containing each employee's manager name
+        res[i].manager =
+          res[res[i].manager_id - 1].first_name +
+          " " +
+          res[res[i].manager_id - 1].last_name;
+      }
 
-    ;
+      // remove manager id from res so as to not display it
+      delete res[i].manager_id;
+    }
 
-    // connect to mySQL useing query instruction to access employees table
-    connection.query(query, function(err, res) {
-        
-        // throw error if there is issue accessing data
-        if (err) throw err;
+    // print data retrieved to terminal in table format
+    console.table(res);
 
-        // add manager names to the manager_id col to be displayed in terminal
-        for(i = 0; i < res.length; i++) {
-
-            // if manager_Id contains a "0" then lable it as "None"
-            if(res[i].manager_id == 0) {
-                
-                res[i].manager = "None" 
-            
-            }else{
-
-                // create new row called manager, containing each employee's manager name
-                res[i].manager = res[res[i].manager_id - 1].first_name + " " + res[res[i].manager_id - 1].last_name;
-
-            };
-
-            // remove manager id from res so as to not display it
-            delete res[i].manager_id;
-
-        };
-
-        // print data retrieved to terminal in table format 
-        console.table(res); 
-        
-        // prompt user for next action
-        cli_prompt();
-
-    });
-
-};
-
+    // prompt user for next action
+    cli_prompt();
+  });
+}
 
 // view all departments in employee_db
 function viewDept() {
+  // SQL command to get data from department table
+  let query = "SELECT department.dept_name AS departments FROM department;";
 
-    // SQL command to get data from department table
-    let query = "SELECT department.dept_name AS departments FROM department;";
+  // connect to mySQL useing query instruction to access departments table
+  connection.query(query, function (err, res) {
+    // throw error if the is issue accessing data
+    if (err) throw err;
 
-    // connect to mySQL useing query instruction to access departments table
-    connection.query(query, function(err, res) {
-        
-        // throw error if the is issue accessing data
-        if (err) throw err;
+    // print data retrieved to terminal in table format
+    console.table(res);
 
-        // print data retrieved to terminal in table format 
-        console.table(res); 
-        
-        // prompt user for next action
-        cli_prompt();
-
-    });
-
-};
+    // prompt user for next action
+    cli_prompt();
+  });
+}
 
 const showAllEmployeesByManager = () => {
   let managersNames = [];
@@ -237,7 +182,7 @@ const showAllEmployeesByManager = () => {
                 })
               );
               console.log("-----------------------------------");
-               cli_prompt();
+              cli_prompt();
             }
           );
         });
@@ -245,273 +190,352 @@ const showAllEmployeesByManager = () => {
   );
 };
 
-const addEmployee = () => {
-  let department_id;
-  let manager_id;
-  let role_id;
-  let employeeNames = [];
-  let availableRoleTitles = [];
+function addEmployee() {
+  // SQL command to get data from roles table
+  let query = "SELECT title FROM roles";
 
-  listOfAvailableRoles.forEach((role) => {
-    availableRoleTitles.push(role.title);
-  });
+  // SQL command to get employee first_name/ last_name/ manager id, role title/ salary and department name data from employees, roles, and department tables
+  let query2 =
+    "SELECT employees.first_name, employees.last_name, roles.title, roles.salary, department.dept_name, employees.manager_id " +
+    "FROM employees " +
+    "JOIN roles ON roles.id = employees.role_id " +
+    "JOIN department ON roles.department_id = department.id " +
+    "ORDER BY employees.id;";
 
-  connection.query("SELECT * FROM employees", function (err, res) {
+  // connect to mySQL using query instruction 1 to access data from roles table
+  connection.query(query, function (err, res) {
     if (err) throw err;
-    for (let i = 0; i < res.length; i++) {
-      employeeNames[i] = `${res[i].first_name} ${res[i].last_name}`;
-    }
-    employeeNames.push("None");
-  });
 
-  inquirer
-    .prompt([
-      {
-        name: "first_name",
-        type: "input",
-        message: "What is the employees's first name?",
-        validate: (name) => /^[a-zA-Z ]+$/.test(name),
-      },
-      {
-        name: "last_name",
-        type: "input",
-        message: "What is the employees's last name?",
-        validate: (name) => /^[a-zA-Z ]+$/.test(name),
-      },
-      {
-        name: "role",
-        type: "list",
-        message: "What is the employees's role?",
-        choices: availableRoleTitles,
-      },
-      {
-        name: "manager",
-        type: "list",
-        message: "Who is the employees's manager?",
-        choices: employeeNames,
-      },
-    ])
-    .then((answer) => {
-      employeeNames[role_id] = `${answer.first_name} ${answer.last_name}`;
+    // assign data from roles table (res) to rolesList
+    let rolesList = res;
 
-      for (let i = 0; i < employeeNames.length; i++) {
-        if (
-          employeeNames[i] === answer.manager &&
-          employeeNames[i] !== "None"
-        ) {
-          manager_id = i + 1;
-          
-        } else if (answer.manager === "None") {
-          manager_id = null;
-          
+    // connect to mySQL using query instruction 2 to access dept_name from department table
+    connection.query(query2, function (err, res) {
+      // throw error if there is issue accessing data
+      if (err) throw err;
+
+      // add manager names to the manager_id col to be displayed in terminal
+      for (i = 0; i < res.length; i++) {
+        // if manager_Id contains a "0" then lable it as "None"
+        if (res[i].manager_id == 0) {
+          res[i].manager = "None";
+        } else {
+          // create new row called manager, containing each employee's manager name
+          res[i].manager =
+            res[res[i].manager_id - 1].first_name +
+            " " +
+            res[res[i].manager_id - 1].last_name;
         }
+
+        // remove manager id from res so as to not display it
+        delete res[i].manager_id;
       }
 
-      listOfAvailableRoles.forEach((role) => {
-        if (answer.role === role.title) {
-          role_id = role.id;
-        }
-      });
+      // print data retrieved to terminal in table format
+      console.table(res);
 
-      switch (department_id) {
-        case 1:
-          department = "Sales";
-          
+      // assign data from employees table (res) to managerList
+      let managerList = res;
 
-        case 2:
-          department = "Engineering";
-          
-
-        case 3:
-          department = "Finance";
-          
-
-        case 4:
-          department = "IT";
-          
-      }
-
-      connection.query(
-        "INSERT INTO employees SET ?",
+      // array of actions to prompt user
+      let addEmpPrompt = [
         {
-          first_name: answer.first_name,
-          last_name: answer.last_name,
-          role_id: role_id,
-          manager_id: manager_id,
+          name: "first_name",
+          type: "input",
+          message: "Enter new employee's first name.",
         },
-        (err) => {
-          if (err) throw err;
-           cli_prompt();
-        }
-      );
-    });
-};
 
-function removeEmployee() {
+        {
+          name: "last_name",
+          type: "input",
+          message: "Enter new employee's last name.",
+        },
 
-    // SQL command to get data from roles table
-    let query = "SELECT employees.id, employees.first_name, employees.last_name FROM employees;";
+        {
+          name: "select_role",
+          type: "list",
+          message: "Select new employee's role.",
 
-    
-    connection.query(query, function(err, res){
-        if (err) throw err;
+          choices: function () {
+            roles = [];
 
-        // combine names from first_name/ last_name cols to be displayed in terminal
-        for(i = 0; i < res.length; i++) {
+            // loop through rolesList to extract the role titles from rolesList
+            for (i = 0; i < rolesList.length; i++) {
+              const roleId = i + 1;
 
-            res[i].employee = res[i].first_name + " " + res[i].last_name;
-            delete res[i].first_name;
+              roles.push(roleId + ": " + rolesList[i].title);
+            }
+            roles.unshift("0: Exit");
 
-            delete res[i].last_name;
+            // return roles (choices) array to be rendered by inquirer to the user
+            return roles;
+          },
+        },
 
-        };
+        {
+          name: "select_manager",
+          type: "list",
+          message: "Select new employee's manager",
 
-        // print data retrieved to terminal in table format 
-        console.table(res);
+          choices: function () {
+            // init managers array - used to return existing employee names as choices array prompted to user
+            managers = [];
 
-        let employeeList = res;
+            // loop through managerList to extract the employee names from managerList
+            for (i = 0; i < managerList.length; i++) {
+              const mId = i + 1;
 
-        // array of actions to prompt user
-        let addEmpPrompt = [
-
-            {
-        
-                name: "select_employee",
-                type: "list",
-                message: "Terminate employee",
-                
-                choices: function() {
-                    
-                    employees = [];
-        
-                    for(i = 0; i < employeeList.length; i++) {
-                        employees.push(employeeList[i].id + ": " + employeeList[i].employee);
-                        
-                    };
-                    
-                    employees.unshift("0: Exit");
-
-
-                    return employees;
-        
-                }
-                
-            },
-
-            {
-                
-                name: "confirm",
-                type: "list",
-
-                message: function(answers) {
-                        
-                    return "Are you sure you want to TERMINATE " + answers.select_employee.split(": ")[1];
-                
-                },
-                
-                // prompt user to pick between Yes and No
-                choices: ["Yes","No"],
-
-                // dont use this prompt if user selected Exit in previous prompt
-                when: function( answers ) {
-                    
-                    return answers.select_employee !== "0: Exit";
-                
-                }
-                
+              managers.push(
+                mId +
+                  ": " +
+                  managerList[i].first_name +
+                  " " +
+                  managerList[i].last_name
+              );
             }
 
-        ];
+            // add string "0: None" to the beginning of managers (choices)
+            managers.unshift("0: None");
 
-        // prompt user actions using inquirer 
-        inquirer.prompt(addEmpPrompt)
+            // add string "E: Exit" to the beginning of managers (choices)
+            managers.unshift("E: Exit");
 
-        .then(function(answer) {
+            // return managers (choices) array to be rendered by inquirer to the user
+            return managers;
+          },
 
-            if(answer.select_employee == "0: Exit") {
+          when: function (answers) {
+            return answers.select_role !== "0: Exit";
+          },
+        },
+      ];
 
-                cli_prompt();
-            
-            // if user selects "No" restart deleteEmployee
-            }else if(answer.confirm == "No") {
+      // prompt user actions using inquirer
+      inquirer
+        .prompt(addEmpPrompt)
 
-                // prompt user for next action
-                deleteEmployee();
+        // await user response from inquirer
+        .then(function (answer) {
+          if (
+            answer.select_role == "0: Exit" ||
+            answer.select_manager == "E: Exit"
+          ) {
+            // prompt user for next action
+            cli_prompt();
+          } else {
+            console.log(answer);
 
-            }else{
+            let query = "INSERT INTO employees SET ?";
 
-                let query = "DELETE FROM employees WHERE employees.id =" + answer.select_employee.split(": ")[0];
+            // connect to mySQL using query instruction to insert new employee in employee table
+            connection.query(
+              query,
+              {
+                first_name: answer.first_name,
+                last_name: answer.last_name,
 
-                connection.query(query, function(err, res) {
+                role_id: parseInt(answer.select_role.split(":")[0]),
 
-                    // throw error if there is issue writing data
-                    if (err) throw err;
-                
-                });
+                manager_id: parseInt(answer.select_manager.split(":")[0]),
+              },
+              function (err, res) {
+                // throw error if there is issue writing data
+                if (err) throw err;
+              }
+            );
 
-                // array of actions to prompt user
-                let addagainPrompt = [
+            // array of actions to prompt user
+            let addagainPrompt = [
+              {
+                name: "again",
+                type: "list",
+                message: "Would you like to add another employee?",
+                choices: ["Yes", "Exit"],
+              },
+            ];
 
-                    {
-                
-                        name: "again",
-                        type: "list",
-                        message: "Would you like to remove another employee?",
-                        choices: ["Yes","Exit"]
-                    
+            inquirer
+              .prompt(addagainPrompt)
+
+              // await user response from inquirer
+              .then(function (answer) {
+                let query =
+                  "SELECT employees.first_name, employees.last_name, roles.title, roles.salary, department.dept_name, employees.manager_id " +
+                  "FROM employees " +
+                  "JOIN roles ON roles.id = employees.role_id " +
+                  "JOIN department ON roles.department_id = department.id " +
+                  "ORDER BY employees.id;";
+
+                // connect to mySQL using query instruction to access first_name, last_name from employees table
+                connection.query(query, function (err, res) {
+                  if (err) throw err;
+
+                  // execute function addEmployee again if user selection is "Yes"
+                  if (answer.again == "Yes") {
+                    // prompt add new employee to employee_db
+                    addEmployee();
+                  } else if (answer.again == "Exit") {
+                    // add manager names to the manager_id col to be displayed in terminal
+                    for (i = 0; i < res.length; i++) {
+                      if (res[i].manager_id == 0) {
+                        res[i].manager = "None";
+                      } else {
+                        res[i].manager =
+                          res[res[i].manager_id - 1].first_name +
+                          " " +
+                          res[res[i].manager_id - 1].last_name;
+                      }
+
+                      // remove manager id from res so as to not display it
+                      delete res[i].manager_id;
                     }
 
-                ];
+                    // print data retrieved to terminal in table format
+                    console.table(res);
 
-                // prompt user actions using inquirer 
-                inquirer.prompt(addagainPrompt)
-
-                .then(function(answer) {
-
-                    let query = "SELECT employees.id, employees.first_name, employees.last_name FROM employees;";
-
-                    connection.query(query, function(err, res){
-
-                        // throw error if there is issue accessing data
-                        if (err) throw err;
-
-                        // combine names from first_name/ last_name cols to be displayed in terminal
-                        for(i = 0; i < res.length; i++) {
-                            res[i].employee = res[i].first_name + " " + res[i].last_name;
-
-                            delete res[i].first_name;
-
-                            delete res[i].last_name;
-
-                        };
-
-                        // execute function updateEmployee again if user selection is "Yes"
-                        if(answer.again == "Yes") {
-
-                            deleteEmployee();
-                        
-                        }else if(answer.again == "Exit") {
-                            
-                            
-                            // print data retrieved to terminal in table format 
-                            console.table(res);
-
-                            // prompt user for next action
-                            cli_prompt(); 
-
-                        };
-
-                    });
-
+                    cli_prompt();
+                  }
                 });
-
-            };
-
+              });
+          }
         });
-
     });
-    
-};
+  });
+}
+
+function removeEmployee() {
+  // SQL command to get data from roles table
+  let query =
+    "SELECT employees.id, employees.first_name, employees.last_name FROM employees;";
+
+  connection.query(query, function (err, res) {
+    if (err) throw err;
+
+    // combine names from first_name/ last_name cols to be displayed in terminal
+    for (i = 0; i < res.length; i++) {
+      res[i].employee = res[i].first_name + " " + res[i].last_name;
+      delete res[i].first_name;
+
+      delete res[i].last_name;
+    }
+
+    // print data retrieved to terminal in table format
+    console.table(res);
+
+    let employeeList = res;
+
+    // array of actions to prompt user
+    let addEmpPrompt = [
+      {
+        name: "select_employee",
+        type: "list",
+        message: "Terminate employee",
+
+        choices: function () {
+          employees = [];
+
+          for (i = 0; i < employeeList.length; i++) {
+            employees.push(
+              employeeList[i].id + ": " + employeeList[i].employee
+            );
+          }
+
+          employees.unshift("0: Exit");
+
+          return employees;
+        },
+      },
+
+      {
+        name: "confirm",
+        type: "list",
+
+        message: function (answers) {
+          return (
+            "Are you sure you want to TERMINATE " +
+            answers.select_employee.split(": ")[1]
+          );
+        },
+
+        // prompt user to pick between Yes and No
+        choices: ["Yes", "No"],
+
+        // dont use this prompt if user selected Exit in previous prompt
+        when: function (answers) {
+          return answers.select_employee !== "0: Exit";
+        },
+      },
+    ];
+
+    // prompt user actions using inquirer
+    inquirer
+      .prompt(addEmpPrompt)
+
+      .then(function (answer) {
+        if (answer.select_employee == "0: Exit") {
+          cli_prompt();
+
+          // if user selects "No" restart deleteEmployee
+        } else if (answer.confirm == "No") {
+          // prompt user for next action
+          deleteEmployee();
+        } else {
+          let query =
+            "DELETE FROM employees WHERE employees.id =" +
+            answer.select_employee.split(": ")[0];
+
+          connection.query(query, function (err, res) {
+            // throw error if there is issue writing data
+            if (err) throw err;
+          });
+
+          // array of actions to prompt user
+          let addagainPrompt = [
+            {
+              name: "again",
+              type: "list",
+              message: "Would you like to remove another employee?",
+              choices: ["Yes", "Exit"],
+            },
+          ];
+
+          // prompt user actions using inquirer
+          inquirer
+            .prompt(addagainPrompt)
+
+            .then(function (answer) {
+              let query =
+                "SELECT employees.id, employees.first_name, employees.last_name FROM employees;";
+
+              connection.query(query, function (err, res) {
+                // throw error if there is issue accessing data
+                if (err) throw err;
+
+                // combine names from first_name/ last_name cols to be displayed in terminal
+                for (i = 0; i < res.length; i++) {
+                  res[i].employee = res[i].first_name + " " + res[i].last_name;
+
+                  delete res[i].first_name;
+
+                  delete res[i].last_name;
+                }
+
+                // execute function updateEmployee again if user selection is "Yes"
+                if (answer.again == "Yes") {
+                  deleteEmployee();
+                } else if (answer.again == "Exit") {
+                  // print data retrieved to terminal in table format
+                  console.table(res);
+
+                  // prompt user for next action
+                  cli_prompt();
+                }
+              });
+            });
+        }
+      });
+  });
+}
 
 const updateEmployeeManager = () => {
   let listOfEmployeesFullNames = [];
@@ -572,147 +596,157 @@ const updateEmployeeManager = () => {
               id: employeeID,
             },
           ],
-           cli_prompt()
+          cli_prompt()
         );
       });
     }
   );
 };
 
+function addRole() {
+  // SQL command to get data from roles table and data from department.dept_name where department.id = roles.department_id
+  let query1 =
+    "SELECT roles.title AS roles, roles.salary, department.dept_name FROM roles INNER JOIN department ON department.id = roles.department_id;";
 
-const addRole = () => {
-  const questions = [
-    {
-      name: "roleTitle",
-      type: "input",
-      message: "Plese enter the title for the new role you want to add",
-      validate: (name) => /^[a-zA-Z ]+$/.test(name),
-    },
-    {
-      name: "salary",
-      type: "input",
-      message: "Please enter the amount of salary considered for that role",
-      validate: (number) => /^\d+$/.test(number),
-    },
-    {
-      name: "departmentID",
-      type: "rawlist",
-      message: "What department this role belongs to?",
-      choices: ["Sales", "Engineering", "Finance", "IT"],
-    },
-  ];
+  // SQL command to get dept_name data from department table - used for prompting list of availible departments to pick from
+  let query2 = "SELECT department.dept_name FROM department";
 
-  inquirer.prompt(questions).then((answer) => {
-    let departmentID;
+  // connect to mySQL using query instruction 1 to access data from roles & department tables
+  connection.query(query1, function (err, res) {
+    // throw error if there is issue accessing data
+    if (err) throw err;
 
-    switch (answer.departmentID) {
-      case "Sales":
-        departmentID = 1;
-        
+    // print data retrieved to terminal in table format
+    console.table(res);
 
-      case "Engineering":
-        departmentID = 2;
-        
+    // connect to mySQL using query instruction 2 to access dept_name from department table
+    connection.query(query2, function (err, res) {
+      // throw error if there is issue accessing data
+      if (err) throw err;
 
-      case "Finance":
-        departmentID = 3;
-        
+      // assign data from dept_name (res) to departmentList
+      let departmentList = res;
 
-      case "IT":
-        departmentID = 4;
-        
-    }
+      // array of actions to prompt user
+      let addRolePrompt = [
+        {
+          name: "add_role",
+          type: "input",
+          message: "Enter a new company role.",
+        },
 
-    listOfAvailableRoles.push({
-      title: answer.roleTitle,
-      salary: answer.salary,
-      department_id: departmentID,
-      id: listOfAvailableRoles.length + 1,
-    });
+        {
+          name: "add_salary",
+          type: "input",
+          message: "Enter a salary for this role.",
+        },
 
-    let sql = `INSERT INTO role 
-            (
-                title, salary, department_id
-            )
-            VALUES
-            (
-                ?, ?, ?
-            )`;
+        {
+          name: "select_department",
+          type: "list",
+          message: "Select a department.",
 
-    connection.query(
-      sql,
-      [answer.roleTitle, answer.salary, departmentID],
-      function (err, res) {
-        if (err) throw err;
-         cli_prompt();
-      }
-    );
-  });
-};
+          // dynamic choises using departmentList (dept_name col of department table)
+          choices: function () {
+            // init departments array - used to return existing department names as choises array prompted to user
+            departments = [];
 
-const removeRole = () => {
-  let avilabaleRoleTitles = [];
-  let roleID;
+            // loop through departmentList to extract the department names from depatmentList which is an object array containing data from department table in the form of rowPackets
+            for (i = 0; i < departmentList.length; i++) {
+              // looping parameter "i" will allways align with the table index, therefore by adding 1 we have effectivly converted it to match table id's
+              const roleId = i + 1;
 
-  listOfAvailableRoles.forEach((role) => {
-    avilabaleRoleTitles.push(role.title);
-  });
-
-  const questions = [
-    {
-      name: "role",
-      type: "rawlist",
-      message: "Which one of these roles you want to remove from the database?",
-      choices: avilabaleRoleTitles,
-    },
-  ];
-
-  inquirer.prompt(questions).then((answer) => {
-    listOfAvailableRoles.forEach((role) => {
-      if (answer.role === role.title) {
-        roleID = role.id;
-      }
-    });
-    connection.query(
-      "select first_name, last_name, title, department from employees inner join role on employees.role_id = role.id inner join department on role.department_id = department.id where role_id = ?",
-      [roleID],
-      function (err, res) {
-        if (err) throw err;
-
-        //Checking to see if the returned response is empty or not. If it's not empty, so the role is in use and cannot be deleted. Otherwise, the role will be deleted.
-        if (res.length) {
-          console.log("***************************************************");
-          console.log(
-            "You cannot remove the roles as long as they are assigned to employees. Please update the role of employees and try again."
-          );
-          console.log("***************************************************");
-           cli_prompt();
-        } else {
-          listOfAvailableRoles.forEach((role) => {
-            if (answer.role === role.title) {
-              connection.query(
-                "DELETE FROM role WHERE title = ?",
-                answer.role,
-                function (err, res) {
-                  if (err) throw err;
-                   cli_prompt();
-                }
-              );
+              // concat roleId and dept_name strings and push the resulting string into our departments (choises) array
+              departments.push(roleId + ": " + departmentList[i].dept_name);
             }
-          });
-        }
-      }
-    );
+
+            // add string "0: Exit" to the beginning of departments (choises)
+            departments.unshift("0: Exit");
+
+            // return departments (choises) array to be rendered by inquirer to the user
+            return departments;
+          },
+        },
+      ];
+
+      // prompt user actions using inquirer
+      inquirer
+        .prompt(addRolePrompt)
+
+        // await user response from inquirer
+        .then(function (answer) {
+          // if user selects Exit return to main menu
+          if (answer.select_department == "0: Exit") {
+            // prompt user for next action
+            cli_prompt();
+          } else {
+            console.log(answer);
+
+            // SQL command to insert new data in roles table
+            let query = "INSERT INTO roles SET ?";
+
+            // connect to mySQL using query instruction to insert new company role in roles table
+            connection.query(
+              query,
+              {
+                title: answer.add_role,
+                salary: answer.add_salary,
+
+                // department_id is extracted by parsing roleId from the selected departments array string and converting it to int
+                department_id: parseInt(answer.select_department.split(":")[0]),
+              },
+              function (err, res) {
+                // throw error if there is issue writing data
+                if (err) throw err;
+              }
+            );
+
+            // array of actions to prompt user
+            let addagainPrompt = [
+              {
+                name: "again",
+                type: "list",
+                message: "Would you like to add another role?",
+                choices: ["Yes", "Exit"],
+              },
+            ];
+
+            // prompt user actions using inquirer
+            inquirer
+              .prompt(addagainPrompt)
+
+              // await user response from inquirer
+              .then(function (answer) {
+                // SQL command to get data from roles table and data from department.dept_name where department.id = roles.department_id
+                let query =
+                  "SELECT roles.id, roles.title AS roles, roles.salary, department.dept_name FROM roles INNER JOIN department ON department.id = roles.department_id;";
+
+                connection.query(query, function (err, res) {
+                  // throw error if there is issue accessing data
+                  if (err) throw err;
+
+                  if (answer.again == "Yes") {
+                    // prompt add new role to employee_db
+                  } else if (answer.again == "Exit") {
+                    // print data retrieved to terminal in table format
+                    console.table(res);
+
+                    // prompt user for next action
+                    cli_prompt();
+                  }
+                });
+              });
+          }
+        });
+    });
   });
-};
+}
 
-// exit employee-traker 
+// exit employee-traker
 function exit() {
+  // terminate mySQL connection
+  connection.end();
 
-    // terminate mySQL connection
-    connection.end();
-
-    // say good bye
-    console.log("Goodbye")
-
-};
+  // say good bye
+  console.log("Goodbye");
+}
